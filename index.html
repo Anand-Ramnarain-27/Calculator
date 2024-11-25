@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Scientific Calculator</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <main id="calculator">
+      <section id="display">
+        <span id="expression"></span>
+        <span id="result"></span>
+      </section>
+      <section id="buttons">
+        <!-- Numbers -->
+        <button>7</button><button>8</button><button>9</button
+        ><button data-action="clear">C</button> <button>4</button
+        ><button>5</button><button>6</button
+        ><button data-action="delete">DEL</button> <button>1</button
+        ><button>2</button><button>3</button
+        ><button data-action="divide">/</button> <button>0</button
+        ><button>.</button><button data-action="equals">=</button
+        ><button data-action="multiply">*</button>
+
+        <!-- Scientific Functions -->
+        <button data-action="sin">sin</button
+        ><button data-action="cos">cos</button
+        ><button data-action="tan">tan</button
+        ><button data-action="sqrt">√</button>
+        <button data-action="square">x²</button
+        ><button data-action="log">log</button
+        ><button data-action="pi">π</button
+        ><button data-action="subtract">-</button>
+        <button data-action="add">+</button>
+      </section>
+    </main>
+    <script src="js.js"></script>
+  </body>
+</html>
