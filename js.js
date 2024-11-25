@@ -7,17 +7,20 @@ document.addEventListener("DOMContentLoaded", function () {
   let currentInput = "";
   let result = "";
 
-  const operations = {
-    add: (a, b) => a + b,
-    subtract: (a, b) => a - b,
-    multiply: (a, b) => a * b,
-    divide: (a, b) => (b !== 0 ? a / b : "Error"),
-    square: (a) => a * a,
-    sqrt: (a) => Math.sqrt(a),
+  const operators = {
+    "+": (a, b) => a + b,
+    "-": (a, b) => a - b,
+    "*": (a, b) => a * b,
+    "/": (a, b) => (b !== 0 ? a / b : "Error"),
+    "^": (a, b) => Math.pow(a, b),
+  };
+
+  const functions = {
     sin: (a) => Math.sin((a * Math.PI) / 180),
     cos: (a) => Math.cos((a * Math.PI) / 180),
     tan: (a) => Math.tan((a * Math.PI) / 180),
     log: (a) => Math.log10(a),
+    sqrt: (a) => Math.sqrt(a),
   };
 
   const updateDisplays = () => {
@@ -33,8 +36,16 @@ document.addEventListener("DOMContentLoaded", function () {
   };
 
   const handleNumberInput = (number) => {
-    currentInput = currentInput ? currentInput + number : number;
-    expression += number;
+    if (
+      number === "-" &&
+      (currentInput === "" || isNaN(expression.slice(-1)))
+    ) {
+      currentInput = "-";
+      expression += number;
+    } else {
+      currentInput += number;
+      expression += number;
+    }
     updateDisplays();
   };
 
@@ -47,7 +58,7 @@ document.addEventListener("DOMContentLoaded", function () {
         if (currentInput) {
           currentInput = currentInput.slice(0, -1);
           expression = expression.slice(0, -1);
-          result = "";
+          result = " ";
         }
         updateDisplays();
         break;
@@ -66,75 +77,61 @@ document.addEventListener("DOMContentLoaded", function () {
         updateDisplays();
         break;
       case "square":
-        handleSquare();
+        if (currentInput) {
+          currentInput = `(${currentInput})^2`;
+          expression += "²";
+        }
+        updateDisplays();
         break;
       case "sqrt":
-        handleSqrt();
+        if (currentInput) {
+          expression = expression.slice(0, -currentInput.length);
+          expression += `√(${currentInput})`;
+          currentInput = `sqrt(${currentInput})`;
+        }
+        updateDisplays();
         break;
-      case "sin":
+      case "subtract":
+        handleNumberInput("-");
+        break;
+
+      case "open-bracket":
+        expression += "(";
+        currentInput = "";
+        updateDisplays();
+        break;
+      case "close-bracket":
+        if (
+          expression.includes("(") &&
+          (expression.match(/\(/g) || []).length >
+            (expression.match(/\)/g) || []).length
+        ) {
+          expression += ")";
+          currentInput = "";
+          updateDisplays();
+        }
+        break;
       case "cos":
+      case "sin":
       case "tan":
       case "log":
-        handleScientificFunction(action);
+        if (currentInput) {
+          expression = expression.slice(0, -currentInput.length);
+          expression += `${action}(${currentInput})`;
+          currentInput = `${action}(${currentInput})`;
+        } else if (result) {
+          expression += `${action}(${result})`;
+          currentInput = `${action}(${result})`;
+        } else {
+          expression += `${action}()`;
+          currentInput = `${action}()`;
+        }
+        updateDisplays();
         break;
       default:
         handleOperator(action, buttonText);
+        updateDisplays();
         break;
-    }
-  };
-
-  const handleSquare = () => {
-    if (currentInput) {
-      const num = parseFloat(currentInput);
-      expression += `²`;
-      currentInput = `Math.pow(${num}, 2)`; // Prepare for evaluation
-      updateDisplays();
-    }
-  };
-
-  const handleSqrt = () => {
-    if (currentInput) {
-      const num = parseFloat(currentInput);
-      if (num < 0) {
-        result = "Error";
-      } else {
-        expression = expression.slice(0, -currentInput.length);
-        expression += `√(${num})`;
-        currentInput = `Math.sqrt(${num})`;
-      }
-      updateDisplays();
-    }
-  };
-
-  const handleScientificFunction = (action) => {
-    if (currentInput || result) {
-      const num = parseFloat(currentInput || result);
-      let functionCall;
-
-      switch (action) {
-        case "sin":
-          functionCall = `Math.sin(${(num * Math.PI) / 180})`;
-          break;
-        case "cos":
-          functionCall = `Math.cos(${(num * Math.PI) / 180})`;
-          break;
-        case "tan":
-          functionCall = `Math.tan(${(num * Math.PI) / 180})`;
-          break;
-        case "log":
-          functionCall = `Math.log10(${num})`;
-          break;
-        default:
-          functionCall = "Error";
-      }
-
-      expression = expression.slice(0, -currentInput.length);
-      expression += `${action}(${num})`;
-      currentInput = functionCall;
-      result = "";
-      updateDisplays();
-    } else {
-      alert("Please enter a number before using scientific functions.");
     }
   };
 
@@ -144,32 +141,97 @@ document.addEventListener("DOMContentLoaded", function () {
         expression = result;
         result = "";
       }
-
-      expression += ` ${buttonText} `;
+      if (buttonText === "-") {
+        expression += ` ${buttonText} `;
+      } else {
+        expression += ` ${buttonText} `;
+      }
       currentInput = "";
     }
     updateDisplays();
   };
 
   const evaluateExpression = (expr) => {
-    const sanitizedExpr = expr
-      .replace(/π/g, Math.PI)
-      .replace(/sin/g, "Math.sin")
-      .replace(/cos/g, "Math.cos")
-      .replace(/tan/g, "Math.tan")
-      .replace(/log/g, "Math.log10")
-      .replace(/√/g, "Math.sqrt")
-      .replace(/\²/g, "**2")
-      .replace(/Math\.(sin|cos|tan)\((\d+(\.\d+)?)\)/g, (match, func, num) => {
-        const radians = (parseFloat(num) * Math.PI) / 180;
-        return `Math.${func}(${radians})`;
-      });
-
     try {
-      return Function('"use strict"; return (' + sanitizedExpr + ")")();
-    } catch (e) {
+      const tokens = tokenize(expr);
+      const rpn = infixToRPN(tokens);
+      return evaluateRPN(rpn);
+    } catch {
       return "Error";
     }
+  };
+
+  const tokenize = (expr) => {
+    return expr
+      .replace(/²/g, "^2")
+      .replace(/√/g, "sqrt")
+      .match(/[\d.]+|[+\-*/^()]|sin|cos|tan|log|sqrt|π/g)
+      .reduce((tokens, token, index, allTokens) => {
+        if (
+          token === "-" &&
+          (index === 0 || "+-*/^(".includes(allTokens[index - 1]))
+        ) {
+          tokens.push(-parseFloat(allTokens[index + 1]) || "-");
+          allTokens.splice(index + 1, 1);
+        } else if (token === "π") {
+          tokens.push(Math.PI);
+        } else {
+          tokens.push(isNaN(token) ? token : parseFloat(token));
+        }
+        return tokens;
+      }, []);
+  };
+
+  const infixToRPN = (tokens) => {
+    const output = [];
+    const stack = [];
+    const precedence = { "+": 1, "-": 1, "*": 2, "/": 2, "^": 3 };
+    tokens.forEach((token) => {
+      if (!isNaN(token)) {
+        output.push(token);
+      } else if (token in functions) {
+        stack.push(token);
+      } else if (token === "(") {
+        stack.push(token);
+      } else if (token === ")") {
+        while (stack.length && stack[stack.length - 1] !== "(") {
+          output.push(stack.pop());
+        }
+        stack.pop();
+        if (stack.length && stack[stack.length - 1] in functions) {
+          output.push(stack.pop());
+        }
+      } else {
+        while (
+          stack.length &&
+          precedence[token] <= precedence[stack[stack.length - 1]]
+        ) {
+          output.push(stack.pop());
+        }
+        stack.push(token);
+      }
+    });
+    while (stack.length) {
+      output.push(stack.pop());
+    }
+    return output;
+  };
+
+  const evaluateRPN = (rpn) => {
+    const stack = [];
+    rpn.forEach((token) => {
+      if (!isNaN(token)) {
+        stack.push(token);
+      } else if (token in operators) {
+        const b = stack.pop();
+        const a = stack.pop();
+        stack.push(operators[token](a, b));
+      } else if (token in functions) {
+        const a = stack.pop();
+        stack.push(functions[token](a));
+      }
+    });
+    return stack[0];
   };
 
   buttons.forEach((button) => {
