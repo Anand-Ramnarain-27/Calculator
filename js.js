@@ -7,6 +7,8 @@ document.addEventListener("DOMContentLoaded", function () {
   let currentInput = "";
   let result = "";
 
+  let isDegree = true;
+
   const operators = {
     "+": (a, b) => a + b,
     "-": (a, b) => a - b,
@@ -36,7 +38,12 @@ document.addEventListener("DOMContentLoaded", function () {
   };
 
   const handleNumberInput = (number) => {
-    if (
+    if (number === "e") {
+      if (!currentInput.includes("e")) {
+        currentInput += "e";
+        expression += "e";
+      }
+    } else if (
       number === "-" &&
       (currentInput === "" || isNaN(expression.slice(-1)))
     ) {
@@ -94,7 +101,17 @@ document.addEventListener("DOMContentLoaded", function () {
       case "subtract":
         handleNumberInput("-");
         break;
-
+      case "power":
+        if (currentInput || result) {
+          if (result) {
+            expression = result;
+            result = "";
+          }
+          expression += "^";
+          currentInput = "";
+        }
+        updateDisplays();
+        break;
       case "open-bracket":
         expression += "(";
         currentInput = "";
@@ -110,6 +127,19 @@ document.addEventListener("DOMContentLoaded", function () {
           currentInput = "";
           updateDisplays();
         }
+        break;
+      case "e":
+        if (!currentInput.includes("e")) {
+          if (currentInput === "") {
+            // If no number has been entered, assume 1 as the base
+            currentInput = "1e";
+            expression += "1e";
+          } else {
+            currentInput += "e";
+            expression += "e";
+          }
+        }
+        updateDisplays();
         break;
       case "cos":
       case "sin":
@@ -165,7 +195,9 @@ document.addEventListener("DOMContentLoaded", function () {
     return expr
       .replace(/²/g, "^2")
       .replace(/√/g, "sqrt")
-      .match(/[\d.]+|[+\-*/^()]|sin|cos|tan|log|sqrt|π/g)
+      .match(
+        /(?:\d+(?:\.\d+)?(?:e[+\-]?\d+)?|[+\-*/^()]|sin|cos|tan|log|sqrt|π)/gi
+      )
       .reduce((tokens, token, index, allTokens) => {
         if (
           token === "-" &&
@@ -181,7 +213,6 @@ document.addEventListener("DOMContentLoaded", function () {
         return tokens;
       }, []);
   };
-
   const infixToRPN = (tokens) => {
     const output = [];
     const stack = [];
