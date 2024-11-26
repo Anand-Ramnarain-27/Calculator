@@ -108,7 +108,7 @@ document.addEventListener("DOMContentLoaded", function () {
             result = "";
           }
           expression += "^";
-          currentInput = "";
+          currentInput = " ";
         }
         updateDisplays();
         break;
